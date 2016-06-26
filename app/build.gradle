@@ -1,0 +1,92 @@
+apply plugin: 'com.android.application'
+//引入utils.gradle
+
+android {
+    signingConfigs {
+        //可以设置多个签名
+        multi_config {
+            keyAlias 'houde'
+            keyPassword '123456'
+            storeFile file('E:/project_key/multi_pack.jks')
+            storePassword '123456'
+        }
+    }
+    compileSdkVersion rootProject.ext.android.compileSdkVersion
+    buildToolsVersion rootProject.ext.android.buildToolsVersion
+    defaultConfig {
+        applicationId "houde.multipack"
+        minSdkVersion rootProject.ext.android.minSdkVersion
+        targetSdkVersion 23
+        versionCode 1
+        versionName "v1.2"
+        signingConfig signingConfigs.multi_config
+        //设置app的全局常量
+        buildConfigField("String", "API_SERVER_URL", '"http://qiuhoude.github.io/v1.1"')
+    }
+    buildTypes {
+        release {
+            minifyEnabled false//是否启动混淆
+            zipAlignEnabled false//是否启动zipAlign
+            shrinkResources false // 是否移除无用的resource文件
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.multi_config
+            buildConfigField("String", "API_SERVER_URL", '"http://qiuhoude.github.io/release/v1.1"')
+        }
+        debug {
+            buildConfigField("String", "API_SERVER_URL", '"http://qiuhoude.github.io/debug/v1.1"')
+        }
+
+
+        //重新命名,包名
+        applicationVariants.all { variant ->
+            if (variant.buildType.name.equals('release')) { //如果是发布版才会编译
+                variant.outputs.each { output ->
+                    def outputFile = output.outputFile
+                    if (outputFile != null && outputFile.name.endsWith('.apk')) {
+                        def fileName =
+                                "multi_pack_${defaultConfig.versionName}_${releaseTime()}_${variant.flavorName}.apk"
+                        output.outputFile = new File(outputFile.parent, fileName)
+                    }
+                }
+            }
+        }
+        //所有占位符的设置
+        productFlavors.all {
+                //遍历整个productFlavors
+                //命令行打包：gradlew assembleRelease
+            flavor ->
+                flavor.manifestPlaceholders = [UMENG_CHANNEL_VALUE: name]
+        }
+    }
+
+    //多渠道打包设置
+    productFlavors {
+        xiaomi {
+            //可以设置,不同包名
+            applicationId "houde.multipack.xiaomi"
+        }
+        qihu360 {
+            applicationId "houde.multipack.qihu360"
+        }
+        wandoujia {}
+        baidu {}
+        yingyongbao {}
+    }
+
+    lintOptions {//设置编译的lint开关，程序在buid的时候，会执行lint检查，有任何的错误或者警告提示，都会终止构建
+        abortOnError false
+    }
+
+
+}
+
+//自定义方法,发布时间
+def releaseTime() {
+    return new Date().format("yyyy-MM-dd", TimeZone.getTimeZone("UTC"))
+}
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    testCompile 'junit:junit:4.12'
+    compile "com.android.support:appcompat-v7:${rootProject.ext.dependencies.supportLibraryVersion}"
+}
